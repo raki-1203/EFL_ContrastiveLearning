@@ -5,11 +5,23 @@ std_label_table = {
     'etc': 3,
 }
 
+std_three_label_table = {
+    'shipping': 0,
+    'product': 1,
+    'processing': 2,
+}
+
 efl_category_label_descriptions = {
-    'shipping': '이것은 배송과 관계 있는 문장입니다.',
-    'product': '이것은 제품과 관계 있는 문장입니다.',
-    'processing': '이것은 처리와 관계 있는 문장입니다.',
-    'etc': '이것은 배송, 제품, 처리와 관계가 없는 문장입니다.',
+    'shipping': '배송과 관계 있는 문장이다',
+    'product': '제품과 관계 있는 문장이다',
+    'processing': '처리와 관계 있는 문장이다',
+    'etc': '배송, 제품, 처리와 관계가 없는 문장이다',
+}
+
+efl_three_category_label_descriptions = {
+    'shipping': '배송과 관계 있는 문장이다',
+    'product': '제품과 관계 있는 문장이다',
+    'processing': '처리와 관계 있는 문장이다',
 }
 
 scl_label_table = {
@@ -39,14 +51,32 @@ scl_label_table = {
     },
 }
 
+scl_three_label_table = {
+    'shipping': {
+        'shipping': 0,
+        'product': 1,
+        'processing': 2,
+    },
+    'product': {
+        'shipping': 3,
+        'product': 4,
+        'processing': 5,
+    },
+    'processing': {
+        'shipping': 6,
+        'product': 7,
+        'processing': 8,
+    },
+}
+
 std_sentiment_label_table = {
     'negative': 0,
     'positive': 1
 }
 
 efl_sentiment_label_descriptions = {
-    'negative': '이것은 부정 입니다.',
-    'positive': '이것은 긍정 입니다.',
+    'negative': '불만의 감정 이다',
+    'positive': '불만이 아닌 감정 이다',
 }
 
 sentiment_scl_label_table = {

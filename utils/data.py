@@ -5,7 +5,8 @@ from torch.utils.data import DataLoader, Dataset
 from transformers import DataCollatorWithPadding
 import pandas as pd
 from .label_descriptions import efl_category_label_descriptions, scl_label_table, std_label_table, \
-    efl_sentiment_label_descriptions, sentiment_scl_label_table, std_sentiment_label_table
+    efl_sentiment_label_descriptions, sentiment_scl_label_table, std_sentiment_label_table, \
+    efl_three_category_label_descriptions, scl_three_label_table, std_three_label_table
 import os
 from datasets import Features, Value, Dataset
 from sklearn.model_selection import train_test_split
@@ -143,7 +144,10 @@ def get_efl_dataloader(args, tokenizer, mecab):
     if 'sentiment' in args.task:
         valid_batch_size = len(efl_sentiment_label_descriptions)
     else:
-        valid_batch_size = len(efl_category_label_descriptions)
+        if 'three' in args.output_path:
+            valid_batch_size = len(efl_three_category_label_descriptions)
+        else:
+            valid_batch_size = len(efl_category_label_descriptions)
 
     return {'train': DataLoader(train_dataset,
                                 collate_fn=data_collator,
@@ -158,7 +162,11 @@ def get_efl_dataloader(args, tokenizer, mecab):
 def _get_efl_dataset(args):
     train_data = {}
     valid_data = {}
-    for category in efl_category_label_descriptions:
+    if 'three' in args.output_path:
+        label_descriptions = efl_three_category_label_descriptions
+    else:
+        label_descriptions = efl_category_label_descriptions
+    for category in label_descriptions:
         file_name = category + '.txt'
         train_path = os.path.join(args.path_to_train_data, file_name)
         train_data[category] = pd.read_csv(train_path, sep='\t', header=None)
@@ -173,9 +181,16 @@ def _get_efl_dataset(args):
     efl_train_data = []
     efl_valid_data = []
 
-    for true_category in efl_category_label_descriptions:
+    if 'three' in args.output_path:
+        scl_label_dict = scl_three_label_table
+        std_label_dict = std_three_label_table
+    else:
+        scl_label_dict = scl_label_table
+        std_label_dict = std_label_table
+
+    for true_category in label_descriptions:
         for sent in train_data[true_category]:
-            for category, label_description in efl_category_label_descriptions.items():
+            for category, label_description in label_descriptions.items():
                 new_example = {}
                 new_example['sent1'] = sent
                 new_example['sent2'] = label_description
@@ -185,18 +200,18 @@ def _get_efl_dataset(args):
                 else:
                     new_example['ce_label'] = 0
 
-                new_example['scl_label'] = scl_label_table[true_category][category]
+                new_example['scl_label'] = scl_label_dict[true_category][category]
                 efl_train_data.append(new_example)
 
         for sent in valid_data[true_category]:
-            for category, label_description in efl_category_label_descriptions.items():
+            for category, label_description in label_descriptions.items():
                 new_example = {}
                 new_example['sent1'] = sent
                 new_example['sent2'] = label_description
 
-                new_example['ce_label'] = std_label_table[true_category]
+                new_example['ce_label'] = std_label_dict[true_category]
 
-                new_example['scl_label'] = scl_label_table[true_category][category]
+                new_example['scl_label'] = scl_label_dict[true_category][category]
                 efl_valid_data.append(new_example)
 
     efl_train_data = pd.DataFrame(efl_train_data)

@@ -103,7 +103,7 @@ class Trainer():
             self.train_loss.update(loss.item(), self.args.batch_size)
             self.train_acc.update(acc.item() / self.args.batch_size)
 
-            if total_step % self.args.eval_steps == 0:
+            if total_step != 0 and total_step % self.args.eval_steps == 0:
                 valid_acc, valid_loss = self.validate(total_step)
                 self.model.train()
                 if self.args.write_summary:
@@ -173,6 +173,9 @@ class Trainer():
     def save_model(self, step):
         if self.best_model_folder:
             shutil.rmtree(self.best_model_folder)
+
+        if not os.path.exists(self.args.output_path):
+            os.makedirs(self.args.output_path, exist_ok=True)
 
         file_name = f'STEP_{step}_{self.args.method}_TASK{self.args.task}_LR{self.args.lr}_WD{self.args.weight_decay}_LAMBDA{self.args.cl_weight}_POOLER{self.args.pooler_option}_TEMP{self.args.temperature}_ACC{self.best_valid_acc:.4f}'
         output_path = os.path.join(self.args.output_path, file_name)

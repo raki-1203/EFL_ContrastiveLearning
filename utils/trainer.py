@@ -2,9 +2,10 @@ from .data import get_efl_dataloader, get_std_dataloader
 from transformers import BertTokenizer
 from .model import EFLContrastiveLearningModel
 from torch import nn, optim
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.tensorboard import SummaryWriter
 from transformers import get_linear_schedule_with_warmup
-from .loss import RDropSupConLoss
+from .loss import RDropSupConLoss, RDropLoss
 from tqdm.auto import tqdm
 import torch
 import os
@@ -42,6 +43,7 @@ class Trainer():
         self.model.to(self.args.device)
 
         self.contrastive_loss = RDropSupConLoss(args.temperature)
+        self.rdrop_loss = RDropLoss()
         self.supervised_loss = nn.CrossEntropyLoss()
 
         self.optimizer = self._get_optimizer()
@@ -80,15 +82,24 @@ class Trainer():
                     output = self.model(input_ids=batch['input_ids'],
                                         attention_mask=batch['attention_mask'])
                     q = output['embeddings']
+                elif 'rdrop' in self.args.method:
+                    output_2 = self.model(input_ids=batch['input_ids'],
+                                          attention_mask=batch['attention_mask'])
+                    logits_2 = output_2['logits']
 
             preds = torch.argmax(logits, dim=-1)
-            ce_loss = self.supervised_loss(logits, batch['ce_label'])
 
             if 'scl' in self.args.method:
+                ce_loss = self.supervised_loss(logits, batch['ce_label'])
                 contrastive_loss = self.contrastive_loss(p, q, batch['scl_label'])
                 loss = self.args.cl_weight * contrastive_loss + (1 - self.args.cl_weight) * ce_loss
+            elif 'rdrop' in self.args.method:
+                ce_loss = (self.supervised_loss(logits, batch['ce_label']) +
+                           self.supervised_loss(logits_2, batch['ce_label'])) * 0.5
+                kl_loss = self.rdrop_loss(logits, logits_2)
+                loss = ce_loss + kl_loss * self.args.rdrop_coef
             else:
-                loss = ce_loss
+                loss = self.supervised_loss(logits, batch['ce_label'])
 
             self.scaler.scale(loss).backward()
 
@@ -97,7 +108,8 @@ class Trainer():
             if (step + 1) % self.args.accumulation_steps == 0:
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
-                self.scheduler.step()
+                if self.args.lr_scheduler_type != 'ReduceLROnPlateau':
+                    self.scheduler.step()
                 self.optimizer.zero_grad()
 
             self.train_loss.update(loss.item(), self.args.batch_size)
@@ -105,6 +117,10 @@ class Trainer():
 
             if total_step != 0 and total_step % self.args.eval_steps == 0:
                 valid_acc, valid_loss = self.validate(total_step)
+
+                if self.args.lr_scheduler_type == 'ReduceLROnPlateau':
+                    self.scheduler.step(valid_acc)
+
                 self.model.train()
                 if self.args.write_summary:
                     self.writer.add_scalar('Loss/train', self.train_loss.avg, total_step)
@@ -180,12 +196,14 @@ class Trainer():
         file_name = f'STEP_{step}_{self.args.method}_TASK{self.args.task}_LR{self.args.lr}_WD{self.args.weight_decay}_LAMBDA{self.args.cl_weight}_POOLER{self.args.pooler_option}_TEMP{self.args.temperature}_ACC{self.best_valid_acc:.4f}'
         output_path = os.path.join(self.args.output_path, file_name)
 
-        os.mkdir(output_path)
+        os.makedirs(output_path, exist_ok=True)
 
         torch.save(self.model.state_dict(), os.path.join(output_path, 'model_state_dict.pt'))
 
         print(f'Model Saved at {output_path}')
         self.best_model_folder = output_path
+
+        self.writer.add_scalar('Best_Acc/valid', self.best_valid_acc)
 
     def _get_optimizer(self):
         no_decay = ['bias', 'LayerNorm.weight']
@@ -201,9 +219,12 @@ class Trainer():
 
     def _get_scheduler(self):
         train_total = self.step_per_epoch * self.args.epochs
-        scheduler = get_linear_schedule_with_warmup(self.optimizer,
-                                                    num_warmup_steps=self.args.warmup_ratio * train_total,
-                                                    num_training_steps=train_total)
+        if self.args.lr_scheduler_type == 'ReduceLROnPlateau':
+            scheduler = ReduceLROnPlateau(self.optimizer, 'max', patience=self.args.patience, factor=0.9)
+        else:
+            scheduler = get_linear_schedule_with_warmup(self.optimizer,
+                                                        num_warmup_steps=self.args.warmup_ratio * train_total,
+                                                        num_training_steps=train_total)
         return scheduler
 
 

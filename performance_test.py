@@ -13,42 +13,9 @@ from tqdm import tqdm
 from kss import split_sentences
 from transformers import BertTokenizer, DataCollatorWithPadding
 
+from utils.label_descriptions import efl_category_label_descriptions, efl_three_category_label_descriptions, \
+    efl_sentiment_label_descriptions, std_three_label_table, std_label_table, std_sentiment_label_table
 from utils.model import EFLContrastiveLearningModel
-
-
-efl_category_label_descriptions = {
-    'shipping': '이것은 배송 관련 문장입니다.',
-    'product': '이것은 제품 관련 문장입니다.',
-    'processing': '이것은 처리 관련 문장입니다.'
-}
-
-
-efl_sentiment_label_descriptions = {
-    'negative': '이것은 부정 입니다.',
-    'positive': '이것은 긍정 입니다.',
-}
-
-
-# efl_category_label_descriptions = {
-#     'shipping': '배송과 관계 있는 문장이다',
-#     'product': '제품과 관계 있는 문장이다',
-#     'processing': '처리와 관계 있는 문장이다',
-#     'etc': '배송, 제품, 처리와 관계가 없는 문장이다',
-# }
-
-
-std_label_table = {
-    'shipping': 0,
-    'product': 1,
-    'processing': 2,
-    # 'etc': 3,
-}
-
-
-std_sentiment_label_table = {
-    'negative': 0,
-    'positive': 1
-}
 
 
 def get_arguments():
@@ -62,15 +29,15 @@ def get_arguments():
     parser.add_argument('--method', type=str, default='efl_scl', choices=('efl', 'efl_scl', 'std', 'std_scl'))
     parser.add_argument('--model_name_or_path', type=str, default='./model/checkpoint-2000000')
     parser.add_argument('--category_saved_model_path', type=str,
-                        default='./model/saved_model/three_category_model_ver2/STEP_300_efl_scl_TASKcategory_LR5e-05_WD0.1_LAMBDA0.3_POOLERcls_TEMP0.5_ACC0.8231')
+                        default='./model/saved_model/three_category_model_ver5/STEP_1700_efl_scl_TASKcategory_LR1e-05_WD0.1_LAMBDA0.1_POOLERcls_TEMP0.25_ACC0.8654')
     parser.add_argument('--sentiment_saved_model_path', type=str,
-                        default='./model/saved_model/sentiment_model_ver2/STEP_800_efl_scl_TASKsentiment_LR1e-05_WD0.1_LAMBDA0.9_POOLERcls_TEMP0.25_ACC0.8631')
+                        default='./model/saved_model/sentiment_model_ver6/STEP_1100_efl_scl_TASKsentiment_LR1e-05_WD0.1_LAMBDA0.3_POOLERcls_TEMP0.5_ACC0.8594')
     parser.add_argument('--vocab_path', type=str, default='./tokenizer/version_1.9')
     parser.add_argument('--max_len', type=int, default=256)
     parser.add_argument('--batch_size', type=int, default=256)
     parser.add_argument('--pooler_option', type=str, default='cls')
 
-    parser.add_argument('--path_to_test_data', type=str, default='./data/cs_sharing/valid_ver2')
+    parser.add_argument('--path_to_test_data', type=str, default='./data/cs_sharing/test_ver6')
 
     args = parser.parse_args()
 
@@ -90,7 +57,10 @@ def evaluate(args, model, dataloader):
     model.eval()
 
     if args.task == 'category':
-        class_num = len(efl_category_label_descriptions)
+        if 'three' in args.category_saved_model_path:
+            class_num = len(efl_three_category_label_descriptions)
+        else:
+            class_num = len(efl_category_label_descriptions)
     else:
         class_num = len(efl_sentiment_label_descriptions)
 
@@ -153,7 +123,14 @@ def evaluate(args, model, dataloader):
 
 def _get_category_dataset(args):
     test_data = {}
-    for category in std_label_table:
+    if 'three' in args.category_saved_model_path:
+        std_label_dict = std_three_label_table
+        label_descriptions = efl_three_category_label_descriptions
+    else:
+        std_label_dict = std_label_table
+        label_descriptions = efl_category_label_descriptions
+
+    for category in std_label_dict:
         file_name = category + '.txt'
         test_path = os.path.join(args.path_to_test_data, file_name)
         test_data[category] = pd.read_csv(test_path, sep='\t', header=None)
@@ -161,9 +138,9 @@ def _get_category_dataset(args):
 
     efl_test_data = []
 
-    for true_category in std_label_table:
+    for true_category in std_label_dict:
         for sent in test_data[true_category]:
-            for category, label_description in efl_category_label_descriptions.items():
+            for category, label_description in label_descriptions.items():
                 new_example = {}
                 new_example['sent1'] = sent
                 new_example['sent2'] = label_description

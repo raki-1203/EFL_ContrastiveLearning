@@ -75,8 +75,8 @@ std_sentiment_label_table = {
 }
 
 efl_sentiment_label_descriptions = {
-    'negative': '불만의 감정 이다',
-    'positive': '불만이 아닌 감정 이다',
+    'negative': '이것은 부정 문장입니다.',
+    'positive': '이것은 긍정 문장입니다.',
 }
 
 sentiment_scl_label_table = {

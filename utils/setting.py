@@ -21,7 +21,7 @@ class Arguments():
         self.add_argument('--write_summary', action='store_true')
 
     def add_hyper_parameters(self):
-        self.add_argument('--method', type=str, default='efl_scl', choices=('efl', 'efl_scl', 'std', 'std_scl'))
+        self.add_argument('--method', type=str, default='efl_scl', choices=('efl', 'efl_scl', 'std', 'std_scl', 'efl_rdrop'))
         self.add_argument('--model_name_or_path', type=str, default='./model/checkpoint-2000000')
         self.add_argument('--vocab_path', type=str, default='./tokenizer/version_1.9')
         self.add_argument('--max_len', type=int, default=256)
@@ -36,6 +36,9 @@ class Arguments():
         self.add_argument('--temperature', type=float, default=0.05)
         self.add_argument('--pooler_option', type=str, default='cls')
         self.add_argument('--cl_weight', type=float, default=0.9)
+        self.add_argument('--rdrop_coef', type=float, default=3)
+        self.add_argument('--patience', type=float, default=5)
+        self.add_argument('--lr_scheduler_type', type=str, default='linear')
 
     def add_data_parameters(self):
         self.add_argument('--path_to_train_data', type=str, default='./data/cs_sharing/train')

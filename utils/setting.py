@@ -19,11 +19,13 @@ class Arguments():
         self.add_argument('--task', type=str, default='category', choices=('sentiment', 'category'))
         self.add_argument('--trial', type=str, default='0')
         self.add_argument('--write_summary', action='store_true')
+        self.add_argument('--wandb', action='store_true')
 
     def add_hyper_parameters(self):
         self.add_argument('--method', type=str, default='efl_scl', choices=('efl', 'efl_scl', 'std', 'std_scl', 'efl_rdrop'))
         self.add_argument('--model_name_or_path', type=str, default='./model/checkpoint-2000000')
         self.add_argument('--vocab_path', type=str, default='./tokenizer/version_1.9')
+        self.add_argument('--saved_model_state_path', type=str, default=None)
         self.add_argument('--max_len', type=int, default=256)
         self.add_argument('--batch_size', type=int, default=64)
         self.add_argument('--epochs', type=int, default=3)

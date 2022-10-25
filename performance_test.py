@@ -29,15 +29,15 @@ def get_arguments():
     parser.add_argument('--method', type=str, default='efl_scl', choices=('efl', 'efl_scl', 'std', 'std_scl'))
     parser.add_argument('--model_name_or_path', type=str, default='./model/checkpoint-2000000')
     parser.add_argument('--category_saved_model_path', type=str,
-                        default='./model/saved_model/three_category_model_ver5/STEP_1700_efl_scl_TASKcategory_LR1e-05_WD0.1_LAMBDA0.1_POOLERcls_TEMP0.25_ACC0.8654')
+                        default='./model/saved_model/category_model_ver6/STEP_1400_efl_scl_TASKcategory_LR5e-05_WD0.1_LAMBDA0.1_POOLERcls_TEMP0.5_ACC0.8627')
     parser.add_argument('--sentiment_saved_model_path', type=str,
-                        default='./model/saved_model/sentiment_model_ver6/STEP_1100_efl_scl_TASKsentiment_LR1e-05_WD0.1_LAMBDA0.3_POOLERcls_TEMP0.5_ACC0.8594')
+                        default='./model/saved_model/sentiment_model_ver6/STEP_900_efl_scl_TASKsentiment_LR1e-05_WD0.1_LAMBDA0.6_POOLERcls_TEMP0.5_ACC0.8575')
     parser.add_argument('--vocab_path', type=str, default='./tokenizer/version_1.9')
     parser.add_argument('--max_len', type=int, default=256)
     parser.add_argument('--batch_size', type=int, default=256)
     parser.add_argument('--pooler_option', type=str, default='cls')
 
-    parser.add_argument('--path_to_test_data', type=str, default='./data/cs_sharing/test_ver6')
+    parser.add_argument('--path_to_test_data', type=str, default='./data/cs_sharing/test_ver5')
 
     args = parser.parse_args()
 
@@ -80,36 +80,40 @@ def evaluate(args, model, dataloader):
             all_prediction_probs.append(logits.detach().cpu().numpy())
             all_labels.append(batch['ce_label'].detach().cpu().numpy())
 
-    all_labels = np.concatenate(all_labels, axis=0)
-    y_true_index = np.array([true_label_index for idx, true_label_index in enumerate(all_labels)
-                             if idx % class_num == 0])
-    all_prediction_probs = np.concatenate(all_prediction_probs, axis=0)
-    all_prediction_probs = np.reshape(all_prediction_probs, (-1, class_num, 2))
+    if 'std' in args.sentiment_saved_model_path:
+        y_true_index = np.concatenate(all_labels, axis=0)
+        y_pred_list = np.argmax(np.concatenate(all_prediction_probs, axis=0), axis=1)
+    else:
+        all_labels = np.concatenate(all_labels, axis=0)
+        y_true_index = np.array([true_label_index for idx, true_label_index in enumerate(all_labels)
+                                 if idx % class_num == 0])
+        all_prediction_probs = np.concatenate(all_prediction_probs, axis=0)
+        all_prediction_probs = np.reshape(all_prediction_probs, (-1, class_num, 2))
 
-    # 배송/제품/처리 만으로 학습한 경우
-    y_pred_list = []
-    for prediction_probs in all_prediction_probs:
-        # pred_cnt = 0
-        # if prediction_probs[0][0] < prediction_probs[0][1]:
-        #     pred = 0
-        #     pred_cnt += 1
-        # if prediction_probs[1][0] < prediction_probs[1][1]:
-        #     pred = 1
-        #     pred_cnt += 1
-        # if prediction_probs[2][0] < prediction_probs[2][1]:
-        #     pred = 2
-        #     pred_cnt += 1
-        # if prediction_probs[3][0] < prediction_probs[3][1]:
-        #     pred = 3
-        #     pred_cnt += 1
-        # if pred_cnt >= 2 or pred_cnt == 0:
-        #     pred = np.argmax(prediction_probs[:, 1], axis=-1)
-        pred = np.argmax(prediction_probs[:, 1], axis=-1)
-        # if prediction_probs[0][0] > prediction_probs[0][1]:
-        #     if prediction_probs[1][0] > prediction_probs[1][1]:
-        #         if prediction_probs[2][0] > prediction_probs[2][1]:
-        #             pred = 3
-        y_pred_list.append(pred)
+        # 배송/제품/처리 만으로 학습한 경우
+        y_pred_list = []
+        for prediction_probs in all_prediction_probs:
+            # pred_cnt = 0
+            # if prediction_probs[0][0] < prediction_probs[0][1]:
+            #     pred = 0
+            #     pred_cnt += 1
+            # if prediction_probs[1][0] < prediction_probs[1][1]:
+            #     pred = 1
+            #     pred_cnt += 1
+            # if prediction_probs[2][0] < prediction_probs[2][1]:
+            #     pred = 2
+            #     pred_cnt += 1
+            # if prediction_probs[3][0] < prediction_probs[3][1]:
+            #     pred = 3
+            #     pred_cnt += 1
+            # if pred_cnt >= 2 or pred_cnt == 0:
+            #     pred = np.argmax(prediction_probs[:, 1], axis=-1)
+            pred = np.argmax(prediction_probs[:, 1], axis=-1)
+            # if prediction_probs[0][0] > prediction_probs[0][1]:
+            #     if prediction_probs[1][0] > prediction_probs[1][1]:
+            #         if prediction_probs[2][0] > prediction_probs[2][1]:
+            #             pred = 3
+            y_pred_list.append(pred)
 
     accuracy = accuracy_score(y_true_index, y_pred_list)
     recall = recall_score(y_true_index, y_pred_list, average='macro')
@@ -157,7 +161,7 @@ def _get_category_dataset(args):
     return Dataset.from_pandas(efl_test_data, features=f)
 
 
-def _get_sentiment_dataset(args):
+def _get_efl_sentiment_dataset(args):
     test_data = {}
 
     test_df = pd.read_csv(args.path_to_test_data)
@@ -189,11 +193,35 @@ def _get_sentiment_dataset(args):
     return Dataset.from_pandas(efl_test_data, features=f)
 
 
+def _get_sentiment_dataset(args):
+    test_df = pd.read_csv(args.path_to_test_data)
+
+    test_data = []
+    for _, row in test_df.iterrows():
+        new_example = {}
+        new_example['sent1'] = row['text']
+        new_example['sent2'] = ''
+
+        new_example['ce_label'] = 1 if row['emotional'] == '일반' else 0
+        test_data.append(new_example)
+
+    test_data = pd.DataFrame(test_data)
+
+    f = Features({'sent1': Value(dtype='string', id=None),
+                  'sent2': Value(dtype='string', id=None),
+                  'ce_label': Value(dtype='int8', id=None)})
+
+    return Dataset.from_pandas(test_data, features=f)
+
+
 def get_dataloader(args, tokenizer, mecab):
     if args.task == 'category':
         test_dataset = _get_category_dataset(args)
     elif args.task == 'sentiment':
-        test_dataset = _get_sentiment_dataset(args)
+        if 'std' in args.sentiment_saved_model_path:
+            test_dataset = _get_sentiment_dataset(args)
+        else:
+            test_dataset = _get_efl_sentiment_dataset(args)
     else:
         raise NotImplementedError('args.task 에 [category, sentiment] 외에 다른 것을 넣으면 안됨!')
 
@@ -256,7 +284,7 @@ def main(args):
 
     accuracy, recall, precision, f1 = evaluate(args, model, dataloader)
 
-    result = f'Task: {args.task} | Model: {saved_model_path} | Accuracy: {accuracy} | Recall: {recall} | Precision: {precision} | F1 Score: {f1}'
+    result = f'Task: {args.task} | Model: {saved_model_path} | Accuracy: {accuracy} | F1 Score: {f1}'
     print(result)
 
     if not os.path.exists('./performance'):

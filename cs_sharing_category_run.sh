@@ -16,20 +16,21 @@ python3 train.py \
   --write_summary \
   --device 1 \
   --method efl_scl \
-  --output_path ./model/saved_model/three_category_model_ver5 \
+  --output_path ./model/saved_model/category_model_ver5_ai_hub \
   --model_name_or_path ./model/checkpoint-2000000 \
   --vocab_path ./tokenizer/version_1.9 \
-  --path_to_train_data ./data/cs_sharing/train_ver5 \
+  --saved_model_state_path ./model/saved_model/sentiment_model_ver6/STEP_900_efl_scl_TASKsentiment_LR1e-05_WD0.1_LAMBDA0.6_POOLERcls_TEMP0.5_ACC0.8575 \
+  --path_to_train_data ./data/cs_sharing/train_ver5_ai_hub \
   --path_to_valid_data ./data/cs_sharing/valid_ver5 \
   --max_len 256 \
-  --batch_size 32 \
+  --batch_size 16 \
   --lr ${lr} \
   --weight_decay 0.1 \
   --cl_weight ${cl_weight} \
   --epochs 10 \
   --pooler_option cls \
   --eval_steps 100 \
-  --tensorboard_dir tensorboard_logs/three_category_model_ver5 \
+  --tensorboard_dir tensorboard_logs/category_model_ver5_ai_hub \
   --warmup_ratio 0.05 \
   --temperature ${temperature} \
   --trial 0 \

@@ -1,17 +1,21 @@
-from .data import get_efl_dataloader, get_std_dataloader
-from transformers import BertTokenizer
-from .model import EFLContrastiveLearningModel
+import os
+import shutil
+
+import wandb
+import torch
+
 from torch import nn, optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.tensorboard import SummaryWriter
+from transformers import BertTokenizer
 from transformers import get_linear_schedule_with_warmup
-from .loss import RDropSupConLoss, RDropLoss
+from sklearn.metrics import accuracy_score
 from tqdm.auto import tqdm
-import torch
-import os
 from konlpy.tag import Mecab
-from glob import glob
-import shutil
+
+from .model import EFLContrastiveLearningModel
+from .loss import RDropSupConLoss, RDropLoss
+from .data import get_efl_dataloader, get_std_dataloader
 
 
 class Trainer():
@@ -40,6 +44,10 @@ class Trainer():
         self.step_per_epoch = len(self.train_dataloader)
 
         self.model = EFLContrastiveLearningModel(args=args)
+        if args.saved_model_state_path:
+            model_state_dict = torch.load(os.path.join(args.saved_model_state_path, 'model_state_dict.pt'),
+                                          map_location=args.device)
+            self.model.load_state_dict(model_state_dict)
         self.model.to(self.args.device)
 
         self.contrastive_loss = RDropSupConLoss(args.temperature)
@@ -103,7 +111,7 @@ class Trainer():
 
             self.scaler.scale(loss).backward()
 
-            acc = torch.sum(preds.cpu() == batch['ce_label'].cpu())
+            acc = accuracy_score(batch['ce_label'].cpu(), preds.cpu())
 
             if (step + 1) % self.args.accumulation_steps == 0:
                 self.scaler.step(self.optimizer)
@@ -113,7 +121,7 @@ class Trainer():
                 self.optimizer.zero_grad()
 
             self.train_loss.update(loss.item(), self.args.batch_size)
-            self.train_acc.update(acc.item() / self.args.batch_size)
+            self.train_acc.update(acc, self.args.batch_size)
 
             if total_step != 0 and total_step % self.args.eval_steps == 0:
                 valid_acc, valid_loss = self.validate(total_step)
@@ -127,6 +135,13 @@ class Trainer():
                     self.writer.add_scalar('Loss/valid', valid_loss, total_step)
                     self.writer.add_scalar('Acc/train', self.train_acc.avg, total_step)
                     self.writer.add_scalar('Acc/valid', valid_acc, total_step)
+                if self.args.wandb:
+                    wandb.log({
+                        'train/loss': self.train_loss.avg,
+                        'train/acc': self.train_acc.avg,
+                        'eval/loss': valid_loss,
+                        'eval/acc': valid_acc,
+                    })
 
                 print(
                     f'STEP {total_step} | eval loss: {valid_loss:.4f} | eval acc: {valid_acc:.4f} | train loss: {self.train_loss.avg:.4f} | train acc: {self.train_acc.avg:.4f}')
@@ -204,6 +219,9 @@ class Trainer():
         self.best_model_folder = output_path
 
         self.writer.add_scalar('Best_Acc/valid', self.best_valid_acc)
+
+        if self.args.wandb:
+            wandb.log({'eval/best_acc': self.best_valid_acc})
 
     def _get_optimizer(self):
         no_decay = ['bias', 'LayerNorm.weight']

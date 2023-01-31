@@ -12,7 +12,7 @@
   - raw(통화내용 STT 텍스트 파일)
   - kss_splitted_data(kss 라이브러리 활용한 문장 분리 시킨 텍스트 파일)
   - preprocessed(데이터 버전별 전처리 된 일반/불만 데이터)
-  - cs_sharing(데이터 버전별 배송/제품/처리/기타 데이)
+  - cs_sharing(데이터 버전별 배송/제품/처리/기타 데이터)
   - 문장감성분석및태깅 50000건.csv(라벨링 맡긴 데이터)
   - 학습데이터셋(최종 학습 파일)
     - sentiment_train.csv

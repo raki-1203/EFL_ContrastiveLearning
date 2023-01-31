@@ -31,7 +31,7 @@ def get_arguments():
     parser.add_argument('--category_saved_model_path', type=str,
                         default='./model/saved_model/category_model_ver6/STEP_1400_efl_scl_TASKcategory_LR5e-05_WD0.1_LAMBDA0.1_POOLERcls_TEMP0.5_ACC0.8627')
     parser.add_argument('--sentiment_saved_model_path', type=str,
-                        default='./model/saved_model/sentiment_model_ver6/STEP_900_efl_scl_TASKsentiment_LR1e-05_WD0.1_LAMBDA0.6_POOLERcls_TEMP0.5_ACC0.8575')
+                        default='./model/saved_model/sentiment_model_ver8/STEP_777200_efl_scl_TASKsentiment_LR1e-05_WD0.1_LAMBDA0.3_POOLERcls_TEMP0.25_ACC0.8969')
     parser.add_argument('--vocab_path', type=str, default='./tokenizer/version_1.9')
     parser.add_argument('--max_len', type=int, default=256)
     parser.add_argument('--batch_size', type=int, default=256)

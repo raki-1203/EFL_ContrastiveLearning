@@ -123,7 +123,7 @@ class Trainer():
             self.train_loss.update(loss.item(), self.args.batch_size)
             self.train_acc.update(acc, self.args.batch_size)
 
-            if total_step != 0 and total_step % self.args.eval_steps == 0:
+            if total_step != 0 and total_step % (self.args.eval_steps * self.args.accumulation_steps) == 0:
                 valid_acc, valid_loss = self.validate(total_step)
 
                 if self.args.lr_scheduler_type == 'ReduceLROnPlateau':
